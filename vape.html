@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>액상 소울메이트 찾기</title>
+    <style>
+        :root { --primary: #6c5ce7; --bg: #f0f2f5; --text: #2d3436; --star: #fdcb6e; }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { font-family: 'Pretendard', sans-serif; background: var(--bg); color: var(--text); margin: 0; display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; padding: 20px; }
+        
+        #app { background: white; width: 100%; max-width: 500px; border-radius: 24px; padding: 40px 30px; box-shadow: 0 10px 40px rgba(0,0,0,0.1); text-align: center; margin: auto; transition: all 0.3s ease; }
+        
+        .step { display: none; animation: fadeIn 0.4s ease-out; }
+        .step.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        h1 { font-size: 2.2rem; margin-bottom: 1rem; color: var(--primary); }
+        h3 { font-size: 1.5rem; margin-bottom: 1.5rem; }
+        p { font-size: 1.1rem; line-height: 1.6; color: #636e72; }
+
+        .tag-container { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin: 25px 0; }
+        .tag { border: 2px solid #dfe6e9; padding: 10px 16px; border-radius: 50px; cursor: pointer; font-size: 1rem; background: white; transition: 0.2s; user-select: none; }
+        .tag.selected { background: var(--primary); color: white; border-color: var(--primary); font-weight: bold; }
+
+        .option-group { margin-bottom: 35px; text-align: left; }
+        .label-text { display: block; font-size: 1.2rem; font-weight: bold; margin-bottom: 15px; color: #2d3436; }
+        .score-row { display: flex; justify-content: space-between; gap: 8px; }
+        .score-btn { flex: 1; border: 2px solid #dfe6e9; padding: 15px 0; border-radius: 12px; background: white; cursor: pointer; font-size: 1.1rem; font-weight: bold; transition: 0.2s; user-select: none; }
+        .score-btn.active { background: #a29bfe; color: white; border-color: #a29bfe; }
+
+        .btn { width: 100%; background: var(--primary); color: white; border: none; padding: 18px; border-radius: 16px; cursor: pointer; font-size: 1.2rem; font-weight: bold; box-shadow: 0 5px 15px rgba(108, 92, 231, 0.3); transition: 0.2s; user-select: none; }
+        .btn:active, .score-btn:active, .tag:active { transform: scale(0.96); }
+        
+        /* 결과 화면 스타일 */
+        #res-list { display: flex; flex-direction: column; gap: 15px; margin-bottom: 20px; }
+        .result-card { 
+            background: #fff; border: 1px solid #eee; padding: 15px; border-radius: 16px; 
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+        .vape-img { width: 100px; height: 100px; background: #f1f1f1; border-radius: 12px; object-fit: contain; flex-shrink: 0; }
+        .vape-info { flex: 1; text-align: left; }
+        .vape-name { font-size: 1.1rem; font-weight: bold; margin-bottom: 5px; color: var(--primary); height: 2.4em; overflow: hidden; line-height: 1.2; }
+        .vape-flavor { font-size: 0.8rem; color: #636e72; margin-bottom: 12px; height: 2.7em; overflow: hidden; }
+        
+        .star-box { width: 100%; display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+        .star-label { font-weight: bold; color: #2d3436; font-size: 0.8rem; }
+        .stars { color: var(--star); font-size: 1rem; letter-spacing: 1px; }
+
+        #alert-msg { color: #e74c3c; font-weight: bold; margin-top: 10px; display: none; }
+
+        /* 나의 선택 요약 스타일 */
+        .summary-box {
+            background: #f7f1ff;
+            border: 1px solid #e0d8ff;
+            padding: 15px;
+            border-radius: 16px;
+            margin-bottom: 20px;
+            text-align: left;
+        }
+        .summary-box h4 { margin: 0 0 10px 0; font-size: 1.1rem; color: var(--primary); text-align: center; font-weight: bold; }
+        .summary-item { display: flex; justify-content: space-between; align-items: center; font-size: 0.9rem; margin-bottom: 8px; }
+        .summary-item:last-child { margin-bottom: 0; }
+        .summary-item .label { font-weight: bold; color: #4a4a4a; }
+        .summary-item .value { color: var(--primary); font-weight: bold; background: white; padding: 4px 12px; border-radius: 8px; font-size: 0.95rem; max-width: 60%; word-break: keep-all; text-align: right; }
+        .summary-item .summary-stars { background: none; padding: 0; color: var(--star); font-size: 1.2rem; letter-spacing: 2px; }
+
+        /* 모바일 최적화 */
+        @media (max-width: 480px) {
+            body { padding: 0; align-items: stretch; }
+            #app { border-radius: 0; box-shadow: none; padding: 30px 20px; min-height: 100vh; display: flex; flex-direction: column; justify-content: center; }
+            .step { width: 100%; }
+            h1 { font-size: 2rem; }
+        }
+    </style>
+</head>
+<body>
+
+<div id="app">
+    <div id="step1" class="step active">
+        <h1>담타 액상 찾기</h1>
+        <p>나만의<br>인생 액상을 찾아보세요.</p>
+        <button class="btn" onclick="go('1-5')">찾기 시작</button>
+    </div>
+
+    <div id="step1-5" class="step">
+        <h3>성별과 연령대를 알려주세요.</h3>
+        <div class="option-group">
+            <span class="label-text">성별</span>
+            <div id="gender-row" class="score-row">
+                <button class="score-btn" onclick="selectGender('남성', this)">남성</button>
+                <button class="score-btn" onclick="selectGender('여성', this)">여성</button>
+            </div>
+        </div>
+        <div class="option-group">
+            <span class="label-text">연령대</span>
+            <div id="age-row" class="tag-container">
+                <div class="tag" onclick="selectAge('10대', this)">10대</div>
+                <div class="tag" onclick="selectAge('20대', this)">20대</div>
+                <div class="tag" onclick="selectAge('30대', this)">30대</div>
+                <div class="tag" onclick="selectAge('40대', this)">40대</div>
+                <div class="tag" onclick="selectAge('50대 이상', this)">50대 이상</div>
+            </div>
+        </div>
+        <button class="btn" onclick="checkGenderAgeAndGo(2)">다음</button>
+    </div>
+
+    <div id="step2" class="step">
+        <h3>선호하는 향 (최대 5개)</h3>
+        <div id="tag-box" class="tag-container"></div>
+        <div id="alert-msg">최소 1개 이상의 향을 선택하여 주세요.</div>
+        <button class="btn" onclick="checkFlavorsAndGo(3)" style="margin-top: 20px;">다음 단계</button>
+    </div>
+
+    <div id="step3" class="step">
+        <h3>취향 수치 선택</h3>
+        <div class="option-group"><span class="label-text">🍯 당도 (1~5)</span><div id="sugar-row" class="score-row"></div></div>
+        <div class="option-group"><span class="label-text">❄️ 쿨링 (0~5)</span><div id="ice-row" class="score-row"></div></div>
+        <div class="option-group"><span class="label-text">⚡ 타격감 (1~5)</span><div id="hit-row" class="score-row"></div></div>
+        <button class="btn" onclick="result()">결과 확인하기</button>
+    </div>
+
+    <div id="step4" class="step">
+        <h3>당신을 위한 추천</h3>
+        <div id="user-selection-summary"></div>
+        <div id="res-list"></div>
+        <button class="btn" onclick="location.reload()" style="margin-top:15px; background:#b2bec3;">다시 하기</button>
+    </div>
+</div>
+
+<script>
+    // 57종 데이터 (이미지 경로 예시: 'images/제품명.jpg')
+    const db = [
+        { n: "주연엔딩2", c: ["적포도", "와인"], s: 3, i: 3, h: 2, img: "https://api.momubox.co.kr/images/thumbnails/1765759983053-%EC%A3%BC%EC%97%B0%EC%97%94%EB%94%A92_%EC%8D%B8%EB%84%A4%EC%9D%BC.webp" },
+        { n: "동경 포도", c: ["적포도"], s: 5, i: 5, h: 2, img: "https://api.momubox.co.kr/images/thumbnails/1762422641001-%EB%8F%99%EA%B2%BD_%ED%8F%AC%EB%8F%84_%EC%8D%B8%EB%84%A4%EC%9D%BC.webp" },
+        { n: "스타로아 블루오션", c: ["레몬", "라임", "모히또"], s: 1, i: 3, h: 2, img: "https://api.momubox.co.kr/images/thumbnails/1762422524167-%EC%8A%A4%ED%83%80%EB%A1%9C%EC%95%84_%EB%B8%94%EB%A3%A8%EC%98%A4%EC%85%98_%EC%8D%B8%EB%84%A4%EC%9D%BC.webp" },
+        { n: "요요 멜로망스", c: ["멜론", "청포도"], s: 4, i: 2, h: 2, img: "https://api.momubox.co.kr/images/thumbnails/1762422387260-%EC%9A%94%EC%9A%94_%EB%A9%9C%EB%A1%9C%EB%A7%9D%EC%8A%A4_%EC%8D%B8%EB%84%A4%EC%9D%BC.webp" },
+        { n: "비바체 몰디브", c: ["레몬", "모히또"], s: 3, i: 3, h: 2, img: "https://api.momubox.co.kr/images/thumbnails/1762422258471-%EB%B9%84%EB%B0%94%EC%B2%B4_%EB%AA%B0%EB%94%94%EB%B8%8C_%EC%8D%B8%EB%84%A4%EC%9D%BC.webp" },
+        { n: "에딕트 로젤하트 블루", c: ["블루베리"], s: 2, i: 2, h: 2, img: "https://api.momubox.co.kr/images/thumbnails/1762422141678-%EC%97%90%EB%94%95%ED%8A%B8_%EB%A1%9C%EC%A0%A4%ED%95%98%ED%8A%B8%EB%B8%94%EB%A3%A8.webp" },
+        { n: "뉴클리어 차르붐바", c: ["멜론", "복숭아"], s: 4, i: 3, h: 2, img: "https://api.momubox.co.kr/images/thumbnails/1762422002309-%ED%8E%9C%ED%83%80%EA%B3%A4_%EB%89%B4%ED%81%B4%EB%A6%AC%EC%96%B4_%EC%8D%B8%EB%84%A4%EC%9D%BC.webp" },
+        { n: "드라큘라 NO4", c: ["그린애플", "리치"], s: 3, i: 3, h: 2, img: "https://api.momubox.co.kr/images/thumbnails/1762418842581-%ED%94%84%EB%A0%88%EC%9D%B4%EC%A6%88_%EB%B0%94%EB%8B%90%EB%9D%BC%EB%9D%BC%EB%96%BC_%EC%8D%B8%EB%84%A4%EC%9D%BC.webp" },
+        { n: "노보 MS블렌드", c: ["시가", "연초"], s: 0, i: 0, h: 5, img: "https://api.momubox.co.kr/images/thumbnails/1762419142878-%EB%85%B8%EB%B3%B4_MS%EB%B8%94%EB%A0%8C%EB%93%9C_%EC%8D%B8%EB%84%A4%EC%9D%BC.webp" },
+        { n: "노보 아메리카노", c: ["커피"], s: 1, i: 0, h: 4, img: "https://api.momubox.co.kr/images/thumbnails/1762496957551-%E1%84%82%E1%85%A9%E1%84%87%E1%85%A9_%E1%84%8B%E1%85%A1%E1%84%86%E1%85%A6%E1%84%85%E1%85%B5%E1%84%8F%E1%85%A1%E1%84%82%E1%85%A9_%E1%84%8A%E1%85%A5%E1%86%B7%E1%84%82%E1%85%A6%E1%84%8B%E1%85%B5%E1%86%AF.webp" },
+        { n: "프레이즈 바닐라 라떼", c: ["바닐라", "커피"], s: 5, i: 0, h: 2, img: "https://api.momubox.co.kr/images/thumbnails/1762418842581-%ED%94%84%EB%A0%88%EC%9D%B4%EC%A6%88_%EB%B0%94%EB%8B%90%EB%9D%BC%EB%9D%BC%EB%96%BC_%EC%8D%B8%EB%84%A4%EC%9D%BC.webp" },
+        { n: "타바코", c: ["연초"], s: 0, i: 0, h: 4, img: "https://api.momubox.co.kr/images/thumbnails/1760670689636-RTB_%E1%84%90%E1%85%A1%E1%84%87%E1%85%A1%E1%84%8F%E1%85%A9_%E1%84%8A%E1%85%A5%E1%86%B7%E1%84%82%E1%85%A6%E1%84%8B%E1%85%B5%E1%86%AF.webp" },
+        { n: "우마이 레몬소다", c: ["레몬", "소다"], s: 3, i: 3, h: 2, img: "https://api.momubox.co.kr/images/thumbnails/1756193564178-BTL_%E1%84%8B%E1%85%AE%E1%84%86%E1%85%A1%E1%84%8B%E1%85%B5_%E1%84%85%E1%85%A6%E1%84%86%E1%85%A9%E1%86%AB%E1%84%89%E1%85%A9%E1%84%83%E1%85%A1_%E1%84%8A%E1%85%A5%E1%86%B7%E1%84%82%E1%85%A6%E1%84%8B%E1%85%B5%E1%86%AF.webp" },
+        { n: "우마이 애플소다", c: ["사과", "소다"], s: 3, i: 3, h: 2, img: "https://api.momubox.co.kr/images/thumbnails/1756193361154-BTL_%E1%84%8B%E1%85%AE%E1%84%86%E1%85%A1%E1%84%8B%E1%85%B5_%E1%84%8B%E1%85%A2%E1%84%91%E1%85%B3%E1%86%AF%E1%84%89%E1%85%A9%E1%84%83%E1%85%A1_%E1%84%8A%E1%85%A5%E1%86%B7%E1%84%82%E1%85%A6%E1%84%8B%E1%85%B5%E1%86%AF.webp" },
+        { n: "우마이 멜론소다", c: ["멜론", "소다"], s: 4, i: 3, h: 2, img: "https://api.momubox.co.kr/images/thumbnails/1756193043646-BTL_%E1%84%8B%E1%85%AE%E1%84%86%E1%85%A1%E1%84%8B%E1%85%B5_%E1%84%86%E1%85%A6%E1%86%AF%E1%84%85%E1%85%A9%E1%86%AB%E1%84%89%E1%85%A9%E1%84%83%E1%85%A1_%E1%84%8A%E1%85%A5%E1%86%B7%E1%84%82%E1%85%A6%E1%84%8B%E1%85%B5%E1%86%AF.webp" },
+        { n: "민트캔디", c: ["민트"], s: 2, i: 4, h: 3, img: "https://api.momubox.co.kr/images/thumbnails/1752651752022-%E1%84%83%E1%85%A1%E1%86%A8%E1%84%90%E1%85%A5%E1%84%87%E1%85%A6%E1%84%8B%E1%85%B5%E1%84%91%E1%85%B3_-red-bottle_%E1%84%86%E1%85%B5%E1%86%AB%E1%84%90%E1%85%B3%E1%84%8F%E1%85%A2%E1%86%AB%E1%84%83%E1%85%B5_%E1%84%8A%E1%85%A5%E1%86%B7%E1%84%82%E1%85%A6%E1%84%8B%E1%85%B5%E1%86%AF.webp" },
+        { n: "자몽비타민씨", c: ["자몽"], s: 2, i: 3, h: 2, img: "https://api.momubox.co.kr/images/thumbnails/1752651742386-%E1%84%83%E1%85%A1%E1%86%A8%E1%84%90%E1%85%A5%E1%84%87%E1%85%A6%E1%84%8B%E1%85%B5%E1%84%91%E1%85%B3_-red-bottle_%E1%84%8C%E1%85%A1%E1%84%86%E1%85%A9%E1%86%BC%E1%84%87%E1%85%B5%E1%84%90%E1%85%A1%E1%84%86%E1%85%B5%E1%86%AB%E1%84%8A%E1%85%B5_%E1%84%8A%E1%85%A5%E1%86%B7%E1%84%82%E1%85%A6%E1%84%8B%E1%85%B5%E1%86%AF.webp" },
+        { n: "엘프리큐 멜론아이스", c: ["멜론", "쿨링"], s: 5, i: 5, h: 2, img: "https://api.momubox.co.kr/images/thumbnails/1747630499486-91_%EC%97%98%ED%94%84%EB%B0%94_%EC%A5%AC%EC%8A%A4_%EC%97%98%ED%94%84%EB%A6%AC%ED%81%90_%EB%A9%9C%EB%A1%A0%EC%95%84%EC%9D%B4%EC%8A%A4.webp" },
+        { n: "엘프리큐 망고피치", c: ["망고", "복숭아"], s: 5, i: 4, h: 2, img: "https://api.momubox.co.kr/images/thumbnails/1747630511518-92_%EC%97%98%ED%94%84%EB%B0%94_%EC%A5%AC%EC%8A%A4_%EC%97%98%ED%94%84%EB%A6%AC%ED%81%90_%EB%A7%9D%EA%B3%A0%ED%94%BC%EC%B9%98.webp" },
+        { n: "엘프리큐 블루라즈", c: ["블루베리", "레몬"], s: 3, i: 4, h: 2, img: "https://api.momubox.co.kr/images/thumbnails/1747630529001-93_%EC%97%98%ED%94%84%EB%B0%94%EC%A5%AC%EC%8A%A4_%EC%97%98%ED%94%84%EB%A6%AC%ED%81%90_%EB%B8%94%EB%A3%A8%EB%9D%BC%EC%A6%88%EB%A0%88%EB%AA%A8%EB%84%A4%EC%9D%B4%EB%93%9C.webp" },
+        { n: "엘프리큐 알로에아이스", c: ["알로에"], s: 3, i: 4, h: 2, img: "https://api.momubox.co.kr/images/thumbnails/1747630541536-94_%EC%97%98%ED%94%84%EB%B0%94_%EC%A5%AC%EC%8A%A4_%EC%97%98%ED%94%84%EB%A6%AC%ED%81%90_%EC%95%8C%EB%A1%9C%EC%97%90%EC%95%84%EC%9D%B4%EC%8A%A4.webp" },
+        { n: "엘프리큐 콜라아이스", c: ["콜라"], s: 4, i: 5, h: 2, img: "https://api.momubox.co.kr/images/thumbnails/1747630554470-95_%EC%97%98%ED%94%84%EB%B0%94%EC%A5%AC%EC%8A%A4_%EC%97%98%ED%94%84%EB%A6%AC%ED%81%90_%EC%BD%9C%EB%9D%BC%EC%95%84%EC%9D%B4%EC%8A%A4.webp" },
+        { n: "마지멜론", c: ["멜론"], s: 5, i: 2, h: 2, img: "https://api.momubox.co.kr/images/thumbnails/1747630580820-96_%EC%BF%A0%EB%AA%A8%EC%B9%B4%EC%8B%9C_%EB%A7%88%EC%A7%80%EB%A9%9C%EB%A1%A0.webp" },
+        { n: "아마이 모모", c: ["복숭아"], s: 5, i: 2, h: 2, img: "https://api.momubox.co.kr/images/thumbnails/1747630593116-97_%EC%BF%A0%EB%AA%A8%EC%B9%B4%EC%8B%9C_%EC%95%84%EB%A7%88%EC%9D%B4_%EB%AA%A8%EB%AA%A8.webp" },
+        { n: "미도리애플", c: ["청사과"], s: 3, i: 3, h: 2, img: "https://api.momubox.co.kr/images/thumbnails/1747630604931-98_%EC%BF%A0%EB%AA%A8%EC%B9%B4%EC%8B%9C_%EB%AF%B8%EB%8F%84%EB%A6%AC%EC%95%A0%ED%94%8C.webp" },
+        { n: "라포사", c: ["라임", "포도", "사이다"], s: 3, i: 3, h: 2, img: "https://api.momubox.co.kr/images/thumbnails/1747630465498-101_%ED%95%B5%EC%8A%A4%ED%84%B0_%EB%9D%BC%ED%8F%AC%EC%82%AC.webp" },
+        { n: "백향과", c: ["패션후르츠"], s: 3, i: 3, h: 2, img: "https://api.momubox.co.kr/images/thumbnails/1747630499464-102_%EB%8D%B8%EB%A6%AC%EC%A5%AC%EC%8A%A4_%EB%B0%B1%ED%96%A5%EA%B3%BC.webp" },
+        { n: "포도주스", c: ["적포도"], s: 4, i: 2, h: 2, img: "https://api.momubox.co.kr/images/thumbnails/1747630513906-103_%EB%8D%B8%EB%A6%AC%EC%A5%AC%EC%8A%A4_%ED%8F%AC%EB%8F%84%EC%A3%BC%EC%8A%A4.webp" },
+        { n: "청포도", c: ["청포도"], s: 3, i: 3, h: 2, img: "https://api.momubox.co.kr/images/thumbnails/1747630528770-104_%EC%96%BC%EB%A0%A4%EB%A8%B9%EA%B3%A0%EC%8B%B6%EC%98%A4_%EC%B2%AD%ED%8F%AC%EB%8F%84.webp" },
+        { n: "복숭아", c: ["복숭아"], s: 3, i: 2, h: 2, img: "https://api.momubox.co.kr/images/thumbnails/1747630549000-105_%EC%96%BC%EB%A0%A4%EB%A8%B9%EA%B3%A0%EC%8B%B6%EC%98%A4_%EB%B3%B5%EC%88%AD%EC%95%84.webp" },
+        { n: "수박", c: ["수박"], s: 3, i: 4, h: 2, img: "https://api.momubox.co.kr/images/thumbnails/1747630579384-107_%EC%96%BC%EB%A0%A4%EB%A8%B9%EA%B3%A0%EC%8B%B6%EC%98%A4_%EC%88%98%EB%B0%95.webp" },
+        { n: "포카리", c: ["이온음료"], s: 2, i: 3, h: 2, img: "https://api.momubox.co.kr/images/thumbnails/1762134192302-%E1%84%8E%E1%85%AE%E1%84%8E%E1%85%A5%E1%86%AB_%E1%84%92%E1%85%A1%E1%86%AB%E1%84%8B%E1%85%B5%E1%86%B8%E1%84%86%E1%85%A1%E1%86%AB_%E1%84%91%E1%85%A9%E1%84%8F%E1%85%A1%E1%84%85%E1%85%B5.webp" },
+        { n: "블랙멘솔", c: ["멘솔"], s: 0, i: 5, h: 5, img: "https://api.momubox.co.kr/images/thumbnails/1747630653540-109_%EB%85%B8%EB%B3%B4_%EB%B8%94%EB%9E%99%EB%A9%98%EC%86%94.webp" },
+        { n: "타박멘솔", c: ["연초", "멘솔"], s: 0, i: 3, h: 4, img: "https://api.momubox.co.kr/images/thumbnails/1747630664661-110_%EB%85%B8%EB%B3%B4_%ED%83%80%EB%B0%95%EB%A9%98%EC%86%94.webp" },
+        { n: "더블라임", c: ["라임"], s: 2, i: 4, h: 2, img: "https://api.momubox.co.kr/images/thumbnails/1747630689251-112_%ED%8E%A0%EB%A6%AD%EC%8A%A4_%EB%8D%94%EB%B8%94%EB%9D%BC%EC%9E%84.webp" },
+        { n: "버블리셔스 알로에포도", c: ["알로에", "포도"], s: 5, i: 2, h: 2, img: "https://api.momubox.co.kr/images/thumbnails/1747629966903-65_%EB%A6%AC%ED%80%B4%EB%93%9C%EB%9E%A9_%EB%B2%84%EB%B8%94%EB%A6%AC%EC%85%94%EC%8A%A4_%EC%95%8C%EB%A1%9C%EC%97%90%ED%8F%AC%EB%8F%84.webp" },
+        { n: "자두아이스", c: ["자두"], s: 3, i: 4, h: 2, img: "https://api.momubox.co.kr/images/thumbnails/1762760328924-%E1%84%8E%E1%85%AE%E1%84%8E%E1%85%A5%E1%86%AB_%E1%84%8F%E1%85%B3%E1%84%85%E1%85%A2%E1%84%91%E1%85%B3%E1%84%90%E1%85%B3%E1%84%91%E1%85%A9%E1%84%83%E1%85%A9.webp" },
+        { n: "알로에", c: ["알로에"], s: 3, i: 3, h: 2, img: "https://api.momubox.co.kr/images/thumbnails/1762760319127-%E1%84%8F%E1%85%B3%E1%84%85%E1%85%A2%E1%84%91%E1%85%B3%E1%84%90%E1%85%B3_%E1%84%8C%E1%85%A1%E1%84%83%E1%85%AE%E1%84%8B%E1%85%A1%E1%84%8B%E1%85%B5%E1%84%89%E1%85%B3.webp" },
+        { n: "블루레몬", c: ["레몬"], s: 3, i: 3, h: 2, img: "https://api.momubox.co.kr/images/thumbnails/1747630541536-94_%EC%97%98%ED%94%84%EB%B0%94_%EC%A5%AC%EC%8A%A4_%EC%97%98%ED%94%84%EB%A6%AC%ED%81%90_%EC%95%8C%EB%A1%9C%EC%97%90%EC%95%84%EC%9D%B4%EC%8A%A4.webp" },
+        { n: "쥬얼머스캣", c: ["샤인머스캣"], s: 4, i: 3, h: 2, img: "https://api.momubox.co.kr/images/thumbnails/1747630529001-93_%EC%97%98%ED%94%84%EB%B0%94%EC%A5%AC%EC%8A%A4_%EC%97%98%ED%94%84%EB%A6%AC%ED%81%90_%EB%B8%94%EB%A3%A8%EB%9D%BC%EC%A6%88%EB%A0%88%EB%AA%A8%EB%84%A4%EC%9D%B4%EB%93%9C.webp" },
+        { n: "블랙커런트그레이프", c: ["포도", "베리"], s: 4, i: 2, h: 2, img: "https://api.momubox.co.kr/images/thumbnails/1747630123244-73_%EB%B8%8C%EB%A6%AC%EC%A6%88_%EB%9D%BC%EC%9E%84.webp" },
+        { n: "스노우플라워", c: ["멘솔"], s: 0, i: 4, h: 4, img: "https://api.momubox.co.kr/images/thumbnails/1747630145316-74_%EC%8A%A4%ED%8C%A9_%EC%A5%AC%EC%96%BC%EB%A8%B8%EC%8A%A4%EC%BA%A3.webp" },
+        { n: "페퍼민트티", c: ["민트", "차"], s: 1, i: 3, h: 2, img: "https://api.momubox.co.kr/images/thumbnails/1747630162409-75_%EC%8A%A4%ED%8C%A9_%EB%B8%94%EB%9E%99%EC%BB%A4%EB%9F%B0%ED%8A%B8%EA%B7%B8%EB%A0%88%EC%9D%B4%ED%94%84.webp" },
+        { n: "피치우롱티", c: ["복숭아", "차"], s: 2, i: 2, h: 2, img: "https://api.momubox.co.kr/images/thumbnails/1747630174863-76_%EC%8A%A4%ED%8C%A9_%EC%8A%A4%EB%85%B8%EC%9A%B0%ED%94%8C%EB%9D%BC%EC%9B%8C.webp" },
+        { n: "블랙사파이어", c: ["포도"], s: 5, i: 3, h: 2, img: "https://api.momubox.co.kr/images/thumbnails/1747630188241-77_%EC%8A%A4%ED%8C%A9_%ED%8E%98%ED%8D%BC%EB%AF%BC%ED%8A%B8%ED%8B%B0.webp" },
+        { n: "프레쉬유자", c: ["유자"], s: 3, i: 3, h: 2, img: "https://api.momubox.co.kr/images/thumbnails/1747630201440-78_%ED%88%AC%EC%9C%A0_%ED%94%BC%EC%B9%98%EC%9A%B0%EB%A1%B1%ED%8B%B0.webp" },
+        { n: "레몬그린티", c: ["레몬", "차"], s: 2, i: 2, h: 2, img: "https://api.momubox.co.kr/images/thumbnails/1760670767942-1747630211574-79_%E1%84%81%E1%85%A1%E1%86%AF%E1%84%81%E1%85%B3%E1%86%B7_%E1%84%86%E1%85%AE%E1%84%92%E1%85%A3%E1%86%BC.webp" },
+        { n: "엑스칵테일 사워", c: ["오렌지", "복숭아"], s: 3, i: 2, h: 2, img: "https://api.momubox.co.kr/images/thumbnails/1762134289626-%E1%84%8E%E1%85%AE%E1%84%8E%E1%85%A5%E1%86%AB_%E1%84%81%E1%85%A1%E1%86%AF%E1%84%81%E1%85%B3%E1%86%B7_%E1%84%8B%E1%85%A1%E1%84%8B%E1%85%B5%E1%84%89%E1%85%B3.webp" },
+        { n: "트로피칼 사워", c: ["열대과일"], s: 3, i: 3, h: 2, img: "https://api.momubox.co.kr/images/thumbnails/1747630297889-81_%EA%B5%BF%EC%A5%AC%EC%8A%A4_%EB%B8%94%EB%9E%99%EC%82%AC%ED%8C%8C%EC%9D%B4%EC%96%B4.webp" },
+        { n: "알로에그레이프", c: ["알로에", "포도"], s: 4, i: 3, h: 2, img: "https://api.momubox.co.kr/images/thumbnails/1747630311228-82_%EA%B5%BF%EC%A5%AC%EC%8A%A4_%ED%94%84%EB%A0%88%EC%89%AC%EC%9C%A0%EC%9E%90.webp" },
+        { n: "복분자N석류", c: ["복분자", "석류"], s: 4, i: 2, h: 2, img: "https://api.momubox.co.kr/images/thumbnails/1747630348121-83_%EA%B5%BF%EC%A5%AC%EC%8A%A4_%EB%A0%88%EB%AA%AC%EA%B7%B8%EB%A6%AC%ED%8B%B0.webp" },
+        { n: "레몬파인애플", c: ["레몬", "파인애플"], s: 3, i: 3, h: 2, img: "https://api.momubox.co.kr/images/thumbnails/1747630360846-84_%EB%B9%84%ED%84%B0_%EC%97%91%EC%8A%A4%EC%B9%B5%ED%85%8C%EC%9D%BC_%EC%82%AC%EC%9B%8C.webp" },
+        { n: "엘프리큐 딸기키위", c: ["딸기", "키위"], s: 3, i: 3, h: 2, img: "https://api.momubox.co.kr/images/thumbnails/1747630371627-85_%EB%B9%84%ED%84%B0_%ED%8A%B8%EB%A1%9C%ED%94%BC%EC%B9%BC_%EC%82%AC%EC%9B%8C.webp" }
+    ];
+
+    let userSelection = { sugar: 1, ice: 0, hit: 1, gender: null, age: null };
+    const selTags = new Set();
+    const tagBox = document.getElementById('tag-box');
+    const alertMsg = document.getElementById('alert-msg');
+
+    // 향 태그 생성
+    [...new Set(db.flatMap(i => i.c))].sort().forEach(c => {
+        const t = document.createElement('div');
+        t.className = 'tag'; t.innerText = c;
+        t.onclick = () => {
+            if(selTags.has(c)) { selTags.delete(c); t.classList.remove('selected'); }
+            else if(selTags.size < 5) { selTags.add(c); t.classList.add('selected'); alertMsg.style.display = 'none'; }
+        };
+        tagBox.appendChild(t);
+    });
+
+    // 별점 변환 함수
+    const makeStars = (num) => '★'.repeat(num) + '☆'.repeat(5 - num);
+
+    // 버튼형 스코어 생성
+    function createScoreButtons(containerId, min, max, key) {
+        const container = document.getElementById(containerId);
+        for(let i = min; i <= max; i++) {
+            const btn = document.createElement('button');
+            btn.className = 'score-btn' + (i === userSelection[key] ? ' active' : '');
+            btn.innerText = i;
+            btn.onclick = () => {
+                container.querySelectorAll('.score-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                userSelection[key] = i;
+            };
+            container.appendChild(btn);
+        }
+    }
+    createScoreButtons('sugar-row', 1, 5, 'sugar');
+    createScoreButtons('ice-row', 0, 5, 'ice');
+    createScoreButtons('hit-row', 1, 5, 'hit');
+
+    function selectGender(gender, element) {
+        document.querySelectorAll('#gender-row .score-btn').forEach(b => b.classList.remove('active'));
+        element.classList.add('active');
+        userSelection.gender = gender;
+    }
+
+    function selectAge(age, element) {
+        document.querySelectorAll('#age-row .tag').forEach(t => t.classList.remove('selected'));
+        element.classList.add('selected');
+        userSelection.age = age;
+    }
+
+    function checkGenderAgeAndGo(step) {
+        if (!userSelection.gender || !userSelection.age) {
+            alert('성별과 연령대를 모두 선택해주세요.');
+            return;
+        }
+        go(step);
+    }
+
+    async function sendToTelegram(message) {
+        const token = '8596329087:AAE5LYehSQWXGuQ-ewG87zy13BiBNJEqTiM';
+        const chatId = '8378966922';
+        const url = `https://api.telegram.org/bot${token}/sendMessage`;
+
+        try {
+            await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ chat_id: chatId, text: message, parse_mode: 'HTML' }),
+            });
+        } catch (error) {
+            console.error('텔레그램 메시지 전송 실패:', error);
+        }
+    }
+
+    function checkFlavorsAndGo(step) { if(selTags.size === 0) { alertMsg.style.display = 'block'; return; } go(step); }
+    function go(n) { document.querySelectorAll('.step').forEach(s => s.classList.remove('active')); document.getElementById('step'+n).classList.add('active'); window.scrollTo(0,0); }
+
+    async function result() {
+        const u = { ...userSelection, c: Array.from(selTags) };
+        const res = db.map(l => {
+            let match = l.c.filter(x => u.c.includes(x)).length * 15;
+            let dist = Math.sqrt(Math.pow(l.s-u.sugar, 2) + Math.pow(l.i-u.ice, 2) + Math.pow(l.h-u.hit, 2));
+            return { ...l, score: match - dist };
+        }).sort((a,b) => b.score - a.score).slice(0, 3);
+
+        const summaryBox = document.getElementById('user-selection-summary');
+        summaryBox.innerHTML = `
+            <div class="summary-box">
+                <h4>나의 선택</h4>
+                <div class="summary-item">
+                    <span class="label">성별/연령</span>
+                    <span class="value">${u.gender} / ${u.age}</span>
+                </div>
+                <div class="summary-item">
+                    <span class="label">😋 선택한 향</span>
+                    <span class="value">${u.c.join(', ')}</span>
+                </div>
+                <div class="summary-item">
+                    <span class="label">🍯 당도</span>
+                    <span class="value summary-stars">${makeStars(u.sugar)}</span>
+                </div>
+                <div class="summary-item">
+                    <span class="label">❄️ 쿨링</span>
+                    <span class="value summary-stars">${makeStars(u.ice)}</span>
+                </div>
+                <div class="summary-item">
+                    <span class="label">⚡ 타격감</span>
+                    <span class="value summary-stars">${makeStars(u.hit)}</span>
+                </div>
+            </div>
+        `;
+
+        const box = document.getElementById('res-list');
+        box.innerHTML = '';
+        res.forEach(r => {
+            box.innerHTML += `
+                <div class="result-card">
+                    <img src="${r.img}" class="vape-img" alt="${r.n}" onerror="this.onerror=null; this.src='https://placehold.co/100x100/f1f1f1/777?text=' + encodeURIComponent('${r.n}');">
+                    <div class="vape-info">
+                        <div class="vape-name">${r.n}</div>
+                        <div class="vape-flavor">구성: ${r.c.join(', ')}</div>
+                        
+                        <div class="star-box">
+                            <span class="star-label">🍯 당도</span>
+                            <span class="stars">${makeStars(r.s)}</span>
+                        </div>
+                        <div class="star-box">
+                            <span class="star-label">❄️ 쿨링</span>
+                            <span class="stars">${makeStars(r.i)}</span>
+                        </div>
+                        <div class="star-box">
+                            <span class="star-label">⚡ 타격감</span>
+                            <span class="stars">${makeStars(r.h)}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+
+        let telegramMessage = `<b>🚬 액상 소울메이트 추천 결과 🚬</b>\n\n`;
+        telegramMessage += `<b>[사용자 선택]</b>\n`;
+        telegramMessage += `- 성별: ${u.gender}\n`;
+        telegramMessage += `- 연령: ${u.age}\n`;
+        telegramMessage += `- 선호향: ${u.c.join(', ')}\n`;
+        telegramMessage += `- 당도: ${'★'.repeat(u.sugar)}${'☆'.repeat(5 - u.sugar)}\n`;
+        telegramMessage += `- 쿨링: ${'★'.repeat(u.ice)}${'☆'.repeat(5 - u.ice)}\n`;
+        telegramMessage += `- 타격감: ${'★'.repeat(u.hit)}${'☆'.repeat(5 - u.hit)}\n\n`;
+
+        telegramMessage += `<b>[추천 제품]</b>\n`;
+        res.forEach((r, index) => {
+            telegramMessage += `${index + 1}. <b>${r.n}</b>\n`;
+            telegramMessage += `   - 구성: ${r.c.join(', ')}\n`;
+            telegramMessage += `   - 당도: ${r.s}/5, 쿨링: ${r.i}/5, 타격감: ${r.h}/5\n\n`;
+        });
+
+        await sendToTelegram(telegramMessage);
+        go(4);
+    }
+</script>
+</body>
+</html>
