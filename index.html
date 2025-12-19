@@ -101,7 +101,7 @@
 
 <div id="app">
     <div id="step1" class="step active">
-        <img src="https://api.momubox.co.kr/images/originals/1764058538874-%E1%84%83%E1%85%A1%E1%86%B7%E1%84%90%E1%85%A1_%E1%84%89%E1%85%A9%E1%84%89%E1%85%A7%E1%86%AF%E1%84%86%E1%85%B5%E1%84%83%E1%85%B5%E1%84%8B%E1%85%A5-%E1%84%91%E1%85%B3%E1%84%85%E1%85%A9%E1%84%91%E1%85%B5%E1%86%AF-%E1%84%8B%E1%85%B5%E1%84%86%E1%85%B5%E1%84%8C%E1%85%B5.png" alt="로고" style="max-width: 150px; height: auto; margin-bottom: 20px;">
+        <img src="https://api.momubox.co.kr/images/originals/1764058538874-%E1%84%83%E1%85%A1%E1%86%B7%E1%84%90%E1%85%A1_%E1%84%89%E1%85%A9%E1%84%89%E1%85%A7%E1%86%AF%E1%84%86%E1%85%B5%E1%84%83%E1%85%B5%E1%84%8B%E1%85%A5-%E1%84%91%E1%85%B3%E1%84%85%E1%85%A9%E1%84%91%E1%85%B5%E1%86%AF-%E1%84%8B%E1%85%B5%E1%84%86%E1%85%B5%E1%84%8C%E1%85%B5.png" alt="로고" style="display: none; max-width: 150px; height: auto; margin-bottom: 20px;">
 
         <p>나만의<br>인생 액상을 찾아보세요.</p>
         <button class="btn" onclick="go('1-5')">찾기 시작</button>
@@ -146,7 +146,7 @@
 
     <div id="step4" class="step">
         <div id="capture-area">
-            <img src="https://api.momubox.co.kr/images/originals/1764058538874-%E1%84%83%E1%85%A1%E1%86%B7%E1%84%90%E1%85%A1_%E1%84%89%E1%85%A9%E1%84%89%E1%85%A7%E1%86%AF%E1%84%86%E1%85%B5%E1%84%83%E1%85%B5%E1%84%8B%E1%85%A5-%E1%84%91%E1%85%B3%E1%84%85%E1%85%A9%E1%84%91%E1%85%B5%E1%86%AF-%E1%84%8B%E1%85%B5%E1%84%86%E1%85%B5%E1%84%8C%E1%85%B5.png" alt="로고" style="max-width: 150px; height: auto; margin-bottom: 20px;">
+            <img src="https://api.momubox.co.kr/images/originals/1764058538874-%E1%84%83%E1%85%A1%E1%86%B7%E1%84%90%E1%85%A1_%E1%84%89%E1%85%A9%E1%84%89%E1%85%A7%E1%86%AF%E1%84%86%E1%85%B5%E1%84%83%E1%85%B5%E1%84%8B%E1%85%A5-%E1%84%91%E1%85%B3%E1%84%85%E1%85%A9%E1%84%91%E1%85%B5%E1%86%AF-%E1%84%8B%E1%85%B5%E1%84%86%E1%85%B5%E1%84%8C%E1%85%B5.png" alt="로고" style="display: none; max-width: 150px; height: auto; margin-bottom: 20px;">
             <div id="user-selection-summary"></div>
             <div id="res-list"></div>
         </div>
@@ -299,9 +299,36 @@
         shareButton.disabled = true;
 
         const captureArea = document.getElementById('capture-area');
+
+        // 캡처 영역 내의 모든 이미지가 로드될 때까지 기다립니다.
+        const images = Array.from(captureArea.getElementsByTagName('img'));
+        const promises = images.map(img => {
+            // 로고처럼 숨겨진 이미지는 건너뜁니다.
+            if (img.style.display === 'none') {
+                return Promise.resolve();
+            }
+            return new Promise((resolve) => {
+                // 이미지가 이미 로드되었거나 (예: 캐시에서), 로드 이벤트 핸들러를 추가합니다.
+                if (img.complete && img.naturalHeight !== 0) {
+                    resolve();
+                } else {
+                    img.onload = resolve;
+                    // onerror도 resolve로 처리하여 Promise.all이 중단되지 않도록 합니다.
+                    img.onerror = resolve;
+                }
+            });
+        });
+
         try {
+            // 모든 이미지 로딩을 기다립니다.
+            await Promise.all(promises);
+            
+            // 이미지 로드 후 브라우저 렌더링을 위한 약간의 추가 지연 시간
+            await new Promise(resolve => setTimeout(resolve, 300));
+
             const canvas = await html2canvas(captureArea, {
                 useCORS: true, // 외부 이미지를 캡처하기 위해 필요
+                backgroundColor: '#ffffff', // 캡처 영역의 배경을 흰색으로 명시
             });
             const link = document.createElement('a');
             link.download = '나의-인생액상-추천결과.png';
